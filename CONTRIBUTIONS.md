@@ -3,7 +3,9 @@
 ## Add-on: Security Alert Analyzer
 
 **Author:** Azzam Abdulkarim Alharbi
-**Scope:** a new, self-contained add-on. The original platform code is unchanged.
+**Scope:** a new, self-contained add-on. No source file of the original platform
+was modified; the upstream documentation was reorganised (see "Files moved" and
+"Files modified" below).
 **Branch:** `feat/security-alert-analyzer`
 
 This document describes exactly what was added, by whom, and what was actually
@@ -45,23 +47,36 @@ be reviewed, reused, or removed without touching the original code.
 | `docs/security-alert-analyzer.md` | Full add-on documentation. |
 | `SECURITY.md` | Scope, reporting process, and known limitations. |
 | `CONTRIBUTIONS.md` | This file. |
-| `ORIGINAL_PLATFORM.md` | The upstream project's own README, moved to its own file so the add-on leads the main README. Original author's content, preserved. |
+
+### Files moved (original content relocated, not rewritten)
+
+| Path | What happened |
+|---|---|
+| `ORIGINAL_PLATFORM.md` | The **original author's** upstream README content, relocated verbatim out of `README.md` so that the add-on leads the main README. This file is not new writing: it is M507's own documentation, preserved intact for reference, with a short header added to state that it documents the upstream project. |
 
 ### Files modified
 
 | Path | Change |
 |---|---|
-| `README.md` | Rewritten to lead with the add-on, with attribution to M507 and a link to `ORIGINAL_PLATFORM.md`. All original platform content was preserved — moved to `ORIGINAL_PLATFORM.md`, not deleted. |
+| `README.md` | Replaced the upstream platform README with a README for the add-on. The original platform documentation was **moved** to `ORIGINAL_PLATFORM.md`, not deleted. The new README keeps attribution to M507, a link to the upstream repository, and a reference to the unchanged MIT license. |
 
-No file belonging to the original platform's **code** was modified. No
-dependency was added: the add-on uses the Python standard library only.
+**In plain terms:** the upstream `README.md` was not left untouched. Its
+platform documentation and release history were relocated into
+`ORIGINAL_PLATFORM.md` so the add-on is what a reader sees first. Nothing from
+the original author was discarded in the process, with two deliberate edits,
+both recorded here:
 
-The upstream `README.md` content was relocated verbatim into
-`ORIGINAL_PLATFORM.md`, with two deliberate edits: a short header noting that
-the file documents the upstream project, and the removal of the "v0.1 — Black
-Hat version" changelog entry together with its performance/cost figures
-(requested by the add-on author; the figures were the upstream author's, and
-this branch does not restate them).
+1. A short header was added to `ORIGINAL_PLATFORM.md` noting that the file
+   documents the upstream project and naming its author.
+2. The `"v0.1 — Black Hat version"` changelog entry was removed, together with
+   its performance and cost figures (`~ $0.18 per alert`,
+   `~ 50 seconds to investigate an alert`). Those figures were the upstream
+   author's; this branch does not restate them, and no equivalent claim is made
+   anywhere in this contribution.
+
+**No source file of the original platform was modified.** The add-on uses the
+Python standard library only and adds no dependency. `LICENSE` and the original
+copyright notice are unchanged.
 
 ## What the add-on does
 

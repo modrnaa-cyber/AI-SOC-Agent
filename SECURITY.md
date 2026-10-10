@@ -37,7 +37,7 @@ rather than opening a public issue:
 1. Open a private security advisory on the repository (GitHub → Security →
    Advisories → "Report a vulnerability"), or
 2. Contact the add-on author: **Azzam Abdulkarim Alharbi** —
-   `atres2244@gmail.com`.
+   `Azzamcyber404@gmail.com`.
 
 Please include: affected file and version, a minimal reproduction (a small
 alert JSON and the exact command), and the impact you believe it has.
