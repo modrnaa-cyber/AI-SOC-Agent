@@ -1,376 +1,218 @@
-# SamiGPT
+# Security Alert Analyzer
 
-**SamiGPT** is an AI-powered security investigation and incident response platform that provides security operations teams with intelligent automation for case management, SIEM analysis, and CTI enrichment through the Model Context Protocol (MCP).
+**Author: Azzam Abdulkarim Alharbi**
 
-> **Note:** This project is currently under active development. Features, APIs, and documentation may change as development progresses.
+An independent, self-contained add-on for triaging JSON security alerts: it
+validates them against a documented schema, classifies severity with an
+**explainable rule set**, and emits a structured report as JSON and Markdown.
 
-## Demo
+> **This README documents the add-on.** For the original upstream platform
+> (SamiGPT) and its release history, see
+> [ORIGINAL_PLATFORM.md](ORIGINAL_PLATFORM.md).
 
-Watch the demo video to see SamiGPT in action:
+---
 
-[Demo Video](https://youtu.be/usd8ed-7AQg)
+## Attribution
 
-For detailed documentation and presentation materials:
+| | |
+|---|---|
+| **Add-on author** | Azzam Abdulkarim Alharbi |
+| **Add-on code** | `src/security_alert_analyzer/` |
+| **Original platform** | SamiGPT (AI-SOC-Agent) |
+| **Original author** | **M507** — <https://github.com/M507/AI-SOC-Agent> |
+| **License** | MIT (unchanged — see [LICENSE](LICENSE)) |
 
-[AI Agents Presentation PDF](demo/BHMEA25_AI_Agents.pdf)
+The **Security Alert Analyzer is developed by Azzam Abdulkarim Alharbi**. The
+original platform **SamiGPT is the work of M507** and is not claimed here. The
+add-on is a separate Python package that imports nothing from the rest of the
+repository, so it can be reviewed, reused, or removed without touching the
+original code. The original copyright notice in `LICENSE` is preserved in full.
 
-SamiGPT's Dashboard:
+---
 
-![SamiGPTs Dashboard](images/main_dashboard.png)
+## Goal
 
-### Quick Start
+Security analysts receive more alerts than they can read. This add-on answers
+one narrow question for each alert — *how much does this deserve attention, and
+why?* — and returns an auditable answer instead of an opaque score.
 
-Two ways to run SamiGPT. Docker Compose starts a separate copy for setup. The production method is the `servee` systemd service on ports 8081 and 8082.
+It is deliberately small and offline. It exists to be read, checked, and
+disagreed with.
 
-#### Docker Compose
+## What it is not
 
-SamiGPT runs as its own Docker Compose stack from [onboarding/docker-compose.yml](onboarding/docker-compose.yml). That container is new: the UI is on host port **18081** and MCP is on host port **18082**. It does not bind 8081 or 8082, and it does not use the production service.
+Stated plainly, so nothing here is over-claimed:
 
-The container starts with a blank config. A setup wizard at `/setup` asks for the console password and the integration tokens. Skipped steps stay at the placeholders from `config.json.example` and are not treated as connected. Certificate checks for Elastic, the local TIP, and NetBox are left off. The MCP listener binds `0.0.0.0`.
-
-**Start it:**
-
-```bash
-docker compose -p samigpt-onboarding -f onboarding/docker-compose.yml up --build
-```
-
-**Open the wizard:**
-
-`https://127.0.0.1:18081/setup`
-
-The browser warns about the self-signed certificate written in the container on first start. Accept it for this host. The wizard order is Security, SIEM (Elastic), case management, EDR, threat intel, knowledge and assets, engineering tickets, then AI and MCP. Each optional step has **Skip for now**. **Finish** writes the config and opens the console at `https://127.0.0.1:18081`. Sign in with the username and password from the Security step.
-
-Config and certificates stay in Compose volumes, so the next `up` keeps what the wizard saved. Stop the stack with:
-
-```bash
-docker compose -p samigpt-onboarding -f onboarding/docker-compose.yml down
-```
-
-Add `-v` only when you want that saved config removed.
-
-**After the wizard**
-
-Use **Refresh models** on the AI step to list models for the token you entered. MCP is reachable on the host at port **18082** (the process inside the container listens on 8082). The AI step stores the public URL and bearer token. Open WebUI can be registered from that same step.
-
-In SamiGPT, the **MCP** button shows health and registered tools:
-
-![MCP connected on SamiGPT](images/mcp_connected_on_samigpt.png)
-
-In Open WebUI, add SamiGPT under **Settings → Tools** using the public MCP URL from the wizard and `Authorization: Bearer <mcp token>`. That is separate from the AI provider URL, which points SamiGPT at Open WebUI:
-
-![MCP connected on Open WebUI](images/mcp_connected_on_openwebui.png)
-
-#### Production service
-
-To run SamiGPT as the boot-persistent production service, use the installer under `servee/`.
-It copies the app to `/opt/servee`, creates a Python 3.10+ venv, installs
-dependencies, and enables + starts the `servee` unit (`Restart=always`).
-Re-running the script reinstalls cleanly and preserves `config.json`, `certs/`,
-`data/`, and `logs/`.
-
-`systemctl restart servee` (and every start) syncs this source tree into
-`/opt/servee` before launching. `config.json`, `certs/`, `data/`, `logs/`, and
-the virtualenv stay in place. Dependencies are reinstalled only when
-`requirements.txt` changes. A full wipe, including a new virtualenv, is still
-`sudo ./servee/install.sh`.
-
-```bash
-# Install or reinstall (requires root; stop any manual `python app.py` first)
-sudo ./servee/install.sh
-
-# Service control. Restart syncs code from the tree install.sh was run from.
-sudo systemctl status servee
-sudo systemctl restart servee
-sudo systemctl stop servee
-sudo systemctl start servee
-
-# Follow logs
-journalctl -u servee -f
-```
-
-Optional: point the installer at a specific Python 3.10+ binary:
-
-```bash
-sudo PYTHON_BIN=/path/to/python3.11 ./servee/install.sh
-```
-
-After install, the UI is at `https://<host>:8081` and MCP at `:8082`, with
-runtime files under `/opt/servee`. An existing `config.json` there is kept, so
-the console opens at sign-in. A host with no password opens the same setup
-wizard at `https://<host>:8081/setup`.
-
-## Overview
-
-SamiGPT acts as an MCP server that exposes security investigation and response capabilities as tools that can be used by AI agents, LLM tools, and automated workflows. It provides a unified, vendor-neutral API layer that connects to:
-
-- **Case Management Systems** (TheHive, IRIS)
-- **SIEM Platforms** (Elastic)
-- **EDR Solutions** (Elastic Defend)
-- **Threat Intelligence** (OpenCTI, Local TIP)
-- **DCIM/IPAM** (NetBox)
-
-The platform enables automated triage, investigation, correlation, and response workflows through intelligent agent profiles organized by SOC tier (SOC1, SOC2).
+- **No AI / no LLM.** Severity comes from a fixed rule set. There is no model,
+  no prompt, and no inference call.
+- **No SIEM integration.** It does not query Elastic, TheHive, IRIS,
+  Velociraptor, or any external service.
+- **No automatic response.** It never isolates a host, disables an account, or
+  opens a case.
+- **No network access at all.** The analyzer is offline by construction.
+- **No new dependency.** Python standard library only.
 
 ## Features
 
-### Core Capabilities
+1. **Strict schema validation** — required fields, types, timestamps, IP
+   addresses, and unknown keys are all checked. Invalid input is rejected with
+   a clear reason and a non-zero exit code, never a silent success.
+2. **Explainable severity classification** — fixed-weight rules that return the
+   ordered list of reasons behind the score, so every verdict can be audited.
+3. **Structured reports in two formats** — JSON for machines, Markdown for
+   humans, carrying the same analysis.
+4. **Built-in caveat** — every report embeds its own false-positive /
+   false-negative warning, so a reader cannot consume a verdict without seeing it.
+5. **Synthetic sample data** — safe to run anywhere; no personal data or secrets.
 
-- **Automated Alert Triage**: Intelligent initial assessment and classification of security alerts
-- **Case Management**: Create, update, and manage security cases with observables, comments, and timeline tracking
-- **SIEM Integration**: Search security events, pivot on indicators, and correlate activities across environments
-- **EDR Response**: Endpoint isolation, process termination, and forensic artifact collection
-- **Threat Intelligence**: IOC enrichment and reputation analysis
-- **Infrastructure Lookup**: Resolve IPs, hosts, and prefixes against NetBox DCIM/IPAM for asset context
-- **Multi-Tier SOC Workflows**: Structured workflows for SOC1 (triage) and SOC2 (investigation)
+---
 
-### Agent Profiles & Runbooks
+## Important: how to read the output
 
-SamiGPT includes pre-configured agent profiles with specialized runbooks:
+**Severity is a rule-based signal, not a confirmed verdict.**
 
-- **SOC1 Agents**: Initial alert triage, enrichment, and false positive identification
-- **SOC2 Agents**: Deep investigation, correlation, and case analysis
+- A high score does **not** mean a breach occurred. A benign privileged login on
+  a hardened host scores `high`; a legitimate service calling a public API on
+  port 4444 scores `medium`. Neither is evidence of compromise.
+- A low score does **not** mean an alert is safe. The rule set only sees the
+  fields in the schema. A real intrusion that avoids those signals scores
+  `informational`.
+- **Indicators are taken at face value.** Any IP listed in the `indicators`
+  field is treated as known-bad *because the caller labelled it so*. The add-on
+  performs **no threat-intelligence lookup**. Putting a benign IP in
+  `indicators` will produce a `critical` verdict — this is intended behaviour of
+  the rule set, and it is why the field must be trusted before it is used.
+- **Every result requires human review.** This is triage input to prioritise
+  attention, not a conclusion to act on automatically.
 
-## Workflows
+The report itself carries this caveat in a `limits` field.
 
-SamiGPT uses structured workflows organized by SOC tier. The following diagrams illustrate the execution flow:
+---
 
-### Agent Profiles Flow
+## Install
 
-This diagram shows how agent profiles are organized and how routing rules direct cases to the appropriate SOC tier agents.
-
-![Agent Profiles Flow](images/execution_flow/agent_profiles_flow.svg)
-
-### Initial Alert Triage (SOC1)
-
-The initial alert triage workflow handles new security alerts, performs quick assessment, enrichment, and determines whether to create a case or close as false positive.
-
-![Initial Alert Triage](images/execution_flow/initial_alert_triage.svg)
-
-### Case Analysis (SOC2)
-
-The SOC2 case analysis workflow performs deep investigation, SIEM analysis, CTI enrichment, correlation, and prepares cases for SOC3 escalation.
-
-![Case Analysis](images/execution_flow/case_analysis.svg)
-
-## Installation
-
-### Prerequisites
-
-- Docker Compose, for the setup stack
-- Python 3.10 or newer, for the production `servee` service
-
-### Setup
-
-- **Docker Compose:** `docker compose -p samigpt-onboarding -f onboarding/docker-compose.yml up --build`, then `https://127.0.0.1:18081/setup`
-- **Production service:** `sudo ./servee/install.sh`, then `https://<host>:8081`
-
-### Connect MCP Server to AI Tools
-
-The **official, supported way** to use SamiGPT's tools is to connect them to
-**Open WebUI** from the wizard's AI step, or afterward under **Settings → Tools**
-in Open WebUI. Once SamiGPT is registered as a tool server, you can drive it
-from **any LLM provider Open WebUI supports** (OpenAI, OpenRouter,
-local/self-hosted models, etc.) without any further per-client setup.
-
-Send `Authorization: Bearer` and the MCP token. Use `https` when MCP TLS is on, and `http` when it is left off.
-
-Docker Compose (host port **18082**):
-
-- Health: `http://127.0.0.1:18082/health`
-- Tools: `http://127.0.0.1:18082/tools`
-- JSON-RPC: `POST http://127.0.0.1:18082/rpc`
-
-Production service (port **8082**):
-
-- Health: `https://<host>:8082/health`
-- Tools: `https://<host>:8082/tools`
-- JSON-RPC: `POST https://<host>:8082/rpc`
-
-## Architecture
-
-### Infrastructure Overview
-
-![Infrastructure Diagram](images/execution_flow/infrastructure_diagram.png)
-
-### Directory Structure
-
-```
-SamiGPT/
-├── src/
-│   ├── api/              # Generic interfaces (CaseManagementClient, SIEMClient, EDRClient)
-│   ├── core/             # Configuration, logging, errors, DTOs
-│   ├── integrations/     # Vendor-specific implementations
-│   │   ├── case_management/  # TheHive, IRIS integrations
-│   │   ├── siem/             # Elastic integration
-│   │   ├── edr/              # EDR platform integrations
-│   │   ├── cti/              # Threat intelligence integrations
-│   │   ├── netbox/           # NetBox DCIM/IPAM integration
-│   │   └── eng/              # Engineering board integrations
-│   ├── llm/              # Pluggable LLM providers (Cursor, OpenAI, OpenRouter, Open WebUI, custom)
-│   ├── mcp/              # MCP server, HTTP transport, supervisor, runbooks
-│   ├── orchestrator/     # Workflow orchestration
-│   └── web/              # Legacy integration config UI
-├── app.py                # Process entry point inside the Compose image
-├── onboarding/           # Docker Compose wizard (ports 18081 and 18082)
-├── run_books/            # SOC tier runbooks and workflows
-├── config/               # Agent profiles and configuration
-└── client_env/           # Client-specific infrastructure data (gitignored except templates)
-```
-
-### Design Principles
-
-- **Vendor-Neutral APIs**: All integrations implement generic interfaces, allowing easy swapping of security tools
-- **Separation of Concerns**: AI/orchestrator layer only interacts with generic APIs, never vendor-specific code
-- **Modular Integration**: Each vendor integration is self-contained with HTTP client, models, mappers, and client implementation
-
-## Configuration
-
-Configuration is managed through `config.json` and can be edited via the web interface or directly.
-
-
-### Configuration File Structure
-
-See `config.json.example` for the complete configuration schema. Key sections:
-
-- `iris` / `thehive`: Case management configuration
-- `elastic`: SIEM configuration
-- `edr`: EDR platform configuration
-- `cti`: Threat intelligence configuration
-- `netbox`: NetBox DCIM/IPAM configuration
-- `eng`: Engineering board configuration (ClickUp, Trello, GitHub)
-- `ai_controller`: Web interface bind address and session storage
-- `llm`: LLM provider used by the web UI (Cursor Agent, OpenAI, OpenRouter, Open WebUI, custom)
-- `mcp`: HTTP MCP listener host/port and auto-start
-- `web`: Console username and password. The wizard hashes the password with Argon2id. A plaintext password is not accepted.
-- `logging`: Logging configuration
-
-## Logging
-
-SamiGPT provides comprehensive logging:
-
-- **Session chat transcripts**: one JSON file per session. On the `servee` unit that is `/opt/servee/data/ai_controller/sessions/<session-id>.json`. See [documentation/session-chat-logs.md](documentation/session-chat-logs.md).
-- **MCP Server Logs**: `logs/mcp/mcp_all.log`, `mcp_requests.log`, `mcp_responses.log`, `mcp_errors.log`
-- **Application Logs**: `logs/debug.log`, `logs/error.log`, `logs/warning.log`
-
-## Development
-
-### Adding a New Integration
-
-1. **Create integration directory** under `src/integrations/`
-2. **Implement generic interface** from `src/api/`
-3. **Add HTTP client, models, and mappers**
-4. **Register in configuration**
-
-Example structure:
-```
-src/integrations/case_management/new_vendor/
-├── __init__.py
-├── client.py          # HTTP client
-├── models.py          # Vendor-specific models
-├── mapper.py          # Vendor ↔ Generic DTO mapping
-└── case_client.py     # Implements CaseManagementClient
-```
-
-### Running Tests
+No dependencies to install — the standard library only.
 
 ```bash
-# Run all tests
-pytest tests/
-
-# Run specific integration tests
-pytest tests/integrations/case_management/
+# From the repository root
+python3 -c "import src.security_alert_analyzer as a; print(a.__version__)"
 ```
 
-## Contributing
+Requires Python 3.10+ (the repository's existing minimum).
 
-When contributing:
+## Run
 
-1. Keep all vendor-specific code under `src/integrations/`
-2. Ensure all integrations implement the generic APIs in `src/api/`
-3. Add tests for new integrations
-4. Update documentation as needed
+```bash
+# Report to both formats
+python3 -m src.security_alert_analyzer \
+    src/security_alert_analyzer/examples/sample_alerts.json \
+    --json-out report.json --md-out report.md
 
-## Author Contributions
+# Print Markdown to stdout
+python3 -m src.security_alert_analyzer \
+    src/security_alert_analyzer/examples/sample_alerts.json
 
-### Security Alert Analyzer add-on — Azzam Abdulkarim Alharbi
+# A malformed alert is rejected with a non-zero exit and a message on stderr
+python3 -m src.security_alert_analyzer \
+    src/security_alert_analyzer/examples/invalid_alert.json --json-out /tmp/x.json
+# error: Field 'timestamp' must be an ISO 8601 datetime, got 'not-a-date'.
+# exit code 2
+```
 
-This repository is the original work of **M507**
-(<https://github.com/M507/AI-SOC-Agent>). The contribution described here is an
-**independent add-on**; the original platform code is unchanged and its
-authorship and copyright are untouched.
+### Library use
 
-**Contributed by:** Azzam Abdulkarim Alharbi
+```python
+from src.security_alert_analyzer import analyze_alert, render_markdown, validate_alert
 
-**Added:** a self-contained Python package at
-`src/security_alert_analyzer/` that validates JSON security alerts against a
-documented schema, classifies severity with an explainable rule set, and emits
-a structured report as JSON and Markdown. It imports nothing from the rest of
-the repository, uses only the standard library, and adds no dependency.
+alert = validate_alert({
+    "alert_id": "A-1",
+    "timestamp": "2026-01-15T02:14:00Z",
+    "rule_name": "Rule",
+    "source": {"user": "root"},
+})
+report = analyze_alert(alert)
+print(report["severity"], report["reasons"])
+print(render_markdown(report))
+```
 
-- **Code:** `src/security_alert_analyzer/` — `schema.py`, `severity.py`,
-  `report.py`, `__main__.py`.
-- **Tests:** `tests/security_alert_analyzer/` — 30 tests covering the success
-  path, invalid input, and edge cases (`30 passed`).
-- **Docs:** `docs/security-alert-analyzer.md`, `SECURITY.md`,
-  `CONTRIBUTIONS.md`.
+## Test
 
-**Scope, stated plainly:** the add-on does not use an LLM, does not query a
-SIEM, and performs no automatic response. It reads a local JSON file and writes
-a local report. It has not been benchmarked and no performance claim is made.
+```bash
+python3 -m pytest tests/security_alert_analyzer/ -v
+```
 
-Full detail, including the exact commands run and their results, is in
-[CONTRIBUTIONS.md](CONTRIBUTIONS.md).
+**30 tests**, covering the success path, invalid input, and edge cases:
+
+| File | Tests | Covers |
+|---|---|---|
+| `tests/security_alert_analyzer/test_schema.py` | 9 | Required/empty fields, bad timestamps, unknown keys, malformed IPs, non-object input |
+| `tests/security_alert_analyzer/test_severity.py` | 8 | Each rule, reason text, determinism, documentation-range handling |
+| `tests/security_alert_analyzer/test_report.py` | 5 | JSON validity, Markdown content, recommendation presence, caveat |
+| `tests/security_alert_analyzer/test_cli.py` | 8 | Both output formats, `{"alerts": [...]}` wrapper, missing file, bad JSON, bad output dir |
+
+---
+
+## Severity rules
+
+Each rule adds a fixed number of points and appends a reason. The score is the
+sum; the band is the first threshold the score reaches.
+
+| Rule | Points |
+|---|---|
+| Source user is a privileged account (`root`, `administrator`, `admin`, `system`, `localsystem`, `nt authority\system`) | +50 |
+| `event.destination_ip` is globally routable (`ipaddress.is_global`) | +20 |
+| `event.destination_port` is in the attacker-tooling set (4444, 1337, 31337, 445, 3389, 5900, 6667, 9001) | +15 |
+| Any `indicators` present (treated as known-bad by assumption) | +100 |
+
+| Score | Severity |
+|---|---|
+| ≥ 75 | critical |
+| ≥ 50 | high |
+| ≥ 25 | medium |
+| ≥ 1 | low |
+| 0 | informational |
+
+Full schema, weights, and limitations: [docs/security-alert-analyzer.md](docs/security-alert-analyzer.md).
+
+## Repository layout (add-on)
+
+```
+src/security_alert_analyzer/
+├── __init__.py        # Public API
+├── schema.py          # Strict alert validation
+├── severity.py        # Explainable rule-based classification
+├── report.py          # JSON and Markdown rendering
+├── __main__.py        # Command-line entry point
+└── examples/
+    ├── sample_alerts.json   # Synthetic alerts, full severity range
+    ├── invalid_alert.json   # Synthetic malformed alert
+    └── README.md            # What the sample data is
+
+tests/security_alert_analyzer/   # 30 tests
+docs/security-alert-analyzer.md  # Full documentation
+SECURITY.md                      # Scope and vulnerability reporting
+CONTRIBUTIONS.md                 # What was added and what was tested
+```
+
+---
+
+## Documentation
+
+| File | Purpose |
+|---|---|
+| [docs/security-alert-analyzer.md](docs/security-alert-analyzer.md) | Full schema, rules, thresholds, and limitations |
+| [SECURITY.md](SECURITY.md) | Scope, vulnerability reporting, safe data handling |
+| [CONTRIBUTIONS.md](CONTRIBUTIONS.md) | Exactly what was added and the tests that were run |
+| [ORIGINAL_PLATFORM.md](ORIGINAL_PLATFORM.md) | Upstream SamiGPT documentation (original author's content) |
 
 ## License
 
-MIT
+MIT — the same license as the original project. See [LICENSE](LICENSE).
+The original copyright notice is unchanged and must remain with any copy or
+substantial portion of the software.
 
-## Support
+## Credits
 
-For issues, questions, or contributions, please open an issue on the repository.
-
-## Acknowledgments
-
-The following projects helped and inspired us during the literature review:
-
-- [AI-Powered SOC Detection System](https://github.com/cyberarber/ai-soc-detection-system/tree/main) - ML-powered SOC platform with autonomous threat detection
-- [ADK Runbooks](https://github.com/dandye/adk_runbooks/tree/main) - Security investigation runbooks and workflows
-
-## Changelog
-
-### v0.3
-
-- **Setup wizard**: a new install can be configured in the browser, so the console password, integrations, and MCP are ready without hand-editing `config.json`
-- **Docker Compose**: setup in its own container, without touching the production service
-- **Operators page**: change the console username and password from the UI (the new password is stored as a new Argon2id hash) and see the actions that account may approve, grouped by SOC, detection engineering, and engineering
-- **Audit view**: append-only record of sign-in, failed sign-in, and sign-out, merged with approval decisions (approved, denied, reviewed, ignored). Passwords and session tokens are never written
-- **Reports view**: finished investigation write-ups from completed session replies, listed newest first and opened as markdown
-- **Library in the console**: runbooks (shared plus SOC1/SOC2/SOC3), standards, and operator documentation, read from the repo and rendered in the UI
-- **Overview dashboard**: landing page with 7-day, 30-day, and all-time charts for open work, what was filed and settled, how closed alerts were decided, how the approval queue was resolved, detection work filed, response actions that ran, and model spend
-- **Session tab bar**: pin sessions, drag to reorder, an overflow menu of every open session, and a new-session shortcut (`Alt+N`)
-- **Appearance**: three palettes (`U-Theme`, `FT-Theme`, `B-Theme`) plus a system mode that follows the browser light/dark preference, stored in this browser
-
-### v0.2
-
-- **Single entry point (`app.py`)** serving an authenticated, HTTPS-only web UI (session login, auto-generated self-signed cert)
-- **MCP server as a separate HTTPS listener** with its own health check, supervisor, and start/stop/restart controls from the UI
-- **Pluggable LLM providers**: Cursor Agent, OpenAI, OpenRouter, Open WebUI, and custom OpenAI-compatible endpoints, selectable and testable from Settings
-- **Open WebUI integration path**: SamiGPT registers as an MCP tool server in Open WebUI, so it can be driven from any LLM provider Open WebUI supports
-- **Approval queue**: human-in-the-loop review/approval workflow for agent actions before they execute
-- **Multi-cluster Elastic support** with per-cluster skill vectors (MSV) controlling which capabilities are enabled per cluster
-- **Skill toggles in Settings**: enable/disable individual skills per integration directly from the web UI, instead of editing the skill vector by hand
-- **NetBox integration** (DCIM/IPAM) as a new data source for investigations
-- **Engineering board integration** (GitHub Issues, Trello) for filing follow-up work from investigations
-- **Requests view** in the UI for tracking in-flight and historical tool calls. A request, such as a detection or runbook gap, can be filed directly as a GitHub issue in a repository you configure, for example a Detection-as-Code repository, and its status stays synchronized when that issue is closed
-- **systemd service installer** (`servee/`) for running SamiGPT as a boot-persistent service
-- Secret-handling and TLS hardening (`core/secrets.py`, `core/tls.py`), plus gitleaks-based secret scanning in CI
-
-### v0.1 — Black Hat version
-
-Presented at Black Hat MEA 2025.
-
-**Performance & Cost**
-- ~ $0.18 per alert
-- ~ 50 seconds to investigate an alert per agent/tab
-
-For detailed cost and usage data, see: [Cost Data CSV](usage-events/cost_all.csv)
+- **SamiGPT (AI-SOC-Agent)** — original platform by **M507**:
+  <https://github.com/M507/AI-SOC-Agent>
+- **Security Alert Analyzer add-on** — Azzam Abdulkarim Alharbi

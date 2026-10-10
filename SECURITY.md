@@ -6,7 +6,8 @@ This policy covers the **Security Alert Analyzer add-on** contributed to this
 repository (`src/security_alert_analyzer/`, `tests/security_alert_analyzer/`,
 `docs/security-alert-analyzer.md`). For vulnerabilities in the original SamiGPT
 platform — its web console, MCP listener, integrations, or TLS handling — please
-contact the upstream maintainer of the original project, not this add-on.
+contact the upstream maintainer of the original project, not this add-on. The
+upstream project's own documentation is preserved in `ORIGINAL_PLATFORM.md`.
 
 ## What the add-on does and does not do
 

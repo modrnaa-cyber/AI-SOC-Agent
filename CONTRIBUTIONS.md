@@ -45,15 +45,23 @@ be reviewed, reused, or removed without touching the original code.
 | `docs/security-alert-analyzer.md` | Full add-on documentation. |
 | `SECURITY.md` | Scope, reporting process, and known limitations. |
 | `CONTRIBUTIONS.md` | This file. |
+| `ORIGINAL_PLATFORM.md` | The upstream project's own README, moved to its own file so the add-on leads the main README. Original author's content, preserved. |
 
 ### Files modified
 
 | Path | Change |
 |---|---|
-| `README.md` | Added an "Author Contributions" section. No original content was removed or altered. |
+| `README.md` | Rewritten to lead with the add-on, with attribution to M507 and a link to `ORIGINAL_PLATFORM.md`. All original platform content was preserved — moved to `ORIGINAL_PLATFORM.md`, not deleted. |
 
-No file belonging to the original platform was modified. No dependency was
-added: the add-on uses the Python standard library only.
+No file belonging to the original platform's **code** was modified. No
+dependency was added: the add-on uses the Python standard library only.
+
+The upstream `README.md` content was relocated verbatim into
+`ORIGINAL_PLATFORM.md`, with two deliberate edits: a short header noting that
+the file documents the upstream project, and the removal of the "v0.1 — Black
+Hat version" changelog entry together with its performance/cost figures
+(requested by the add-on author; the figures were the upstream author's, and
+this branch does not restate them).
 
 ## What the add-on does
 
