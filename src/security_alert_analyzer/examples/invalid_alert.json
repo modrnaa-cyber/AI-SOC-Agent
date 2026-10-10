@@ -1,0 +1,5 @@
+{
+  "alert_id": "LAB-BAD-0001",
+  "timestamp": "not-a-date",
+  "rule_name": "Malformed alert used to demonstrate rejection"
+}

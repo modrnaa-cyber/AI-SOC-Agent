@@ -290,6 +290,37 @@ When contributing:
 3. Add tests for new integrations
 4. Update documentation as needed
 
+## Author Contributions
+
+### Security Alert Analyzer add-on — Azzam Abdulkarim Alharbi
+
+This repository is the original work of **M507**
+(<https://github.com/M507/AI-SOC-Agent>). The contribution described here is an
+**independent add-on**; the original platform code is unchanged and its
+authorship and copyright are untouched.
+
+**Contributed by:** Azzam Abdulkarim Alharbi
+
+**Added:** a self-contained Python package at
+`src/security_alert_analyzer/` that validates JSON security alerts against a
+documented schema, classifies severity with an explainable rule set, and emits
+a structured report as JSON and Markdown. It imports nothing from the rest of
+the repository, uses only the standard library, and adds no dependency.
+
+- **Code:** `src/security_alert_analyzer/` — `schema.py`, `severity.py`,
+  `report.py`, `__main__.py`.
+- **Tests:** `tests/security_alert_analyzer/` — 30 tests covering the success
+  path, invalid input, and edge cases (`30 passed`).
+- **Docs:** `docs/security-alert-analyzer.md`, `SECURITY.md`,
+  `CONTRIBUTIONS.md`.
+
+**Scope, stated plainly:** the add-on does not use an LLM, does not query a
+SIEM, and performs no automatic response. It reads a local JSON file and writes
+a local report. It has not been benchmarked and no performance claim is made.
+
+Full detail, including the exact commands run and their results, is in
+[CONTRIBUTIONS.md](CONTRIBUTIONS.md).
+
 ## License
 
 MIT

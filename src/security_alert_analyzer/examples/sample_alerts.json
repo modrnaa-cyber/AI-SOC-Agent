@@ -1,0 +1,60 @@
+{
+  "alerts": [
+    {
+      "alert_id": "LAB-0001",
+      "timestamp": "2026-01-15T02:14:00Z",
+      "rule_name": "Repeated failed authentication",
+      "source": {"ip": "192.0.2.44", "host": "lab-web-01", "user": "alice"},
+      "event": {"category": "authentication", "action": "login", "outcome": "failure"},
+      "indicators": [],
+      "description": "Synthetic brute-force pattern used by the analyzer demo.",
+      "tags": ["synthetic", "authentication"]
+    },
+    {
+      "alert_id": "LAB-0002",
+      "timestamp": "2026-01-15T03:40:00Z",
+      "rule_name": "Outbound connection from server",
+      "source": {"ip": "192.0.2.44", "host": "lab-web-01", "user": "svc-backup"},
+      "event": {
+        "category": "network",
+        "action": "connection",
+        "outcome": "success",
+        "destination_ip": "8.8.8.8",
+        "destination_port": 4444
+      },
+      "indicators": [],
+      "description": "Synthetic beacon-like egress to a public resolver on an unusual port.",
+      "tags": ["synthetic", "network"]
+    },
+    {
+      "alert_id": "LAB-0003",
+      "timestamp": "2026-01-15T04:05:00Z",
+      "rule_name": "Privileged account interactive login",
+      "source": {"ip": "192.0.2.51", "host": "lab-dc-01", "user": "root"},
+      "event": {"category": "authentication", "action": "login", "outcome": "success"},
+      "indicators": [],
+      "description": "Synthetic privileged login on a domain controller.",
+      "tags": ["synthetic", "privileged"]
+    },
+    {
+      "alert_id": "LAB-0004",
+      "timestamp": "2026-01-15T05:20:00Z",
+      "rule_name": "Threat intel match on observed indicator",
+      "source": {"ip": "192.0.2.77", "host": "lab-app-02", "user": "svc-deploy"},
+      "event": {"category": "network", "action": "connection", "outcome": "success"},
+      "indicators": ["203.0.113.9"],
+      "description": "Synthetic alert whose indicator is treated as known-bad by the rule set.",
+      "tags": ["synthetic", "threat-intel"]
+    },
+    {
+      "alert_id": "LAB-0005",
+      "timestamp": "2026-01-15T09:12:00Z",
+      "rule_name": "Routine scheduled task completed",
+      "source": {"ip": "192.0.2.30", "host": "lab-file-01", "user": "svc-task"},
+      "event": {"category": "process", "action": "start", "outcome": "success"},
+      "indicators": [],
+      "description": "Synthetic benign alert that should score informational.",
+      "tags": ["synthetic", "benign"]
+    }
+  ]
+}
